@@ -1,0 +1,26 @@
+VDF FPGA Competition Submission Form
+
+To submit your design:
+- submit an official team entry form
+- fill in the fields below
+- create your final commit with git signoff:
+    git commit -s -m "round 1 entry"
+- email your final repo + commit to hello@vdfalliance.org
+
+Team name: xjtu_asic
+Expected result (avg ns/square): 30.8ns , 2 cycles @ 65 Mhz, 
+Design documentation (below): 
+- Referencing ozturk design, but we set the sq_out and sq_in as 65 segments respectively.
+- 2 cycles are used for modular squaring and the process is shown in "modular_square/model/pictures.txt".
+- Cycle 1: Calculate the high part of squaring.
+- Cycle 2: Generate the reduction numbers and Calculate the low part of squaring, and then add up them.
+- This design needs 1089 DSPs because of the spliting of the squaring.
+- The last four state: "FINISH0", "FINISH1", "FINISH2" and "FINISH3" are used for the last modular squaring loop to 
+  output the completely reduced result.
+- A sample circuit diagram is shown in "modular_square/model/circuit_diagram.pdf".
+- The main design files are listed below：
+ modular_square/rtl/modular_square_2_cycles.sv  ----The systemverilog codes of modular squaring. 
+ modular_square/rtl/xpb_lut.sv		            ----The reduction look-up table circuit. 
+ modular_square/rtl/gen_reduction_lut.py	    ----The script for generating "xpb_lut.sv". 
+ modular_square/model/pictures.txt              ----A brief description of the modular squaring process. 
+ modular_square/model/circuit_diagram.pdf       ----A simple diagram of the modular squaring circuit.

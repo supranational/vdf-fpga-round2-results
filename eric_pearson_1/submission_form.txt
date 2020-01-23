@@ -1,0 +1,28 @@
+VDF FPGA Competition Submission Form
+
+To submit your design:
+- submit an official team entry form
+- fill in the fields below
+- create your final commit with git signoff:
+    git commit -s -m "round 2 entry"
+- email your final repo + commit to hello@vdfalliance.org
+
+Team name: Eric Pearson
+Expected result (avg ns/square): 27.0 nS, 4 cyc @ 148.3 Mhz.
+Design documentation (* = round 2 improvements):
+- Used same numeric representation, word length, and interface as in the provided reference.
+- unrolled as 2 stage pipeline, with lut address = square product register. see: modular_square/model/pictures.txt
+- Stage1: Parallel 1Kbit square unit based on 17bit DSP multiplier, with native CARRY8 adder trees
+- Stage2: Parallel 2Kbit product modulus using 5/6/6bit LUTRAM based word reduction roms, and native CARRY8 adder trees
+* Optimized the reduction adder tree inputs to keep luts driven by same square product word as adjacent inputs.
+* Bypassed the square product register for V30, V54, and 5 lsb words of V76. Added Multi-cycle timing constraints.
+- State machine controlled stage register enables and valid signals to give 2 clock cycles per stage. Multi-cycle timing constraints 
+- State machine intialization delay of 4 cycles for starting value paths. Multi-cycle timing constraints
+- Power savings by reset of modsqr unit upon while IDLE or upon completion of itterations.
+- Power ramp up of 1ms by integrated ramp pulse modulated delay of state machine register enables.
+- Clock domain crossing logic in the wrapper. Max-delay timing constraints.
+* MMCM pll 102:87 clock multiplier of 125 Mhz ref to give 146.6 Mhz or 27.3ns. 
+* Observed post route timing margin slack of 335ps on modsq_clk_pll
+* Post route PLL adjust 102:86 to give 148.3 Mhz for measured 27.0ns. Observe final timing report shows all timing passed at this frequency.
+- For simulation modify POWER_RAMP to 'h100 (normally 'h1 for synth). See line 57 in modular_square_8_cycles.sv
+

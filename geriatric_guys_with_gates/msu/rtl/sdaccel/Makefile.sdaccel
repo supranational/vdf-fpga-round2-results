@@ -1,0 +1,274 @@
+.PHONY: help
+
+help::
+	$(ECHO) "Makefile Usage:"
+	$(ECHO) "  make all TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform>"
+	$(ECHO) "      Generate the design for specified Target and Device."
+	$(ECHO) ""
+	$(ECHO) "  make clean "
+	$(ECHO) "      Remove the generated non-hardware files."
+	$(ECHO) ""
+	$(ECHO) "  make cleanall"
+	$(ECHO) "      Remove all the generated files."
+	$(ECHO) ""
+	$(ECHO) "  make check TARGET=<sw_emu/hw_emu/hw> DEVICE=<FPGA platform>"
+	$(ECHO) "      Run application in emulation."
+	$(ECHO) ""
+
+
+############################################################################
+# Multiplier configuration
+############################################################################
+include ../../multiplier.mk
+
+HOST_FLAGS_HW_EMU  = -e -f 1
+HOST_FLAGS_FPGA    = -e -f 10
+
+############################################################################
+# Synthesis directives
+############################################################################
+
+ifeq ($(SIMPLE_SQ), 1)
+LDCLFLAGS += -DSIMPLE_SQ=1
+endif
+LDCLFLAGS += -DMOD_LEN_DEF=$(MOD_LEN)
+LDCLFLAGS += -DMODULUS_DEF=$(MOD_LEN)\'d$(MODULUS)
+LDCLFLAGS += -DMSU_SQ_IN_BITS_DEF=$(SQ_IN_BITS)
+LDCLFLAGS += -DMSU_SQ_OUT_BITS_DEF=$(SQ_OUT_BITS)
+
+# synth
+LDCLFLAGS += --xp "vivado_prop:run.pfm_dynamic_vdf_1_0_synth_1.{STRATEGY}={Flow_AreaOptimized_high}"
+LDCLFLAGS += --xp "vivado_prop:run.pfm_dynamic_vdf_1_0_synth_1.{STEPS.SYNTH_DESIGN.ARGS.MORE OPTIONS}={-constrset synth_constrs -verbose}"
+LDCLFLAGS += --xp "vivado_prop:run.pfm_dynamic_vdf_1_0_synth_1.{STEPS.SYNTH_DESIGN.TCL.PRE}=$(SCRIPTS_DIR)/synth_design.pre.tcl"
+LDCLFLAGS += --xp "vivado_prop:run.pfm_dynamic_vdf_1_0_synth_1.{STEPS.SYNTH_DESIGN.TCL.POST}=$(SCRIPTS_DIR)/synth_design.post.tcl"
+
+# impl
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STRATEGY}={Performance_SpreadSLLs}"
+
+# impl OPT_DESIGN
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.OPT_DESIGN.IS_ENABLED}={true}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.OPT_DESIGN.ARGS.DIRECTIVE}={ExploreWithRemap}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.OPT_DESIGN.TCL.PRE}=$(SCRIPTS_DIR)/opt_design.pre.tcl"
+
+# impl POWER_OPT_DESIGN
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POWER_OPT_DESIGN.IS_ENABLED}={false}"
+
+# impl PLACE_DESIGN
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PLACE_DESIGN.ARGS.DIRECTIVE}={SSI_SpreadSLLs}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PLACE_DESIGN.ARGS.MORE OPTIONS}={-verbose}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PLACE_DESIGN.TCL.PRE}=$(SCRIPTS_DIR)/place_design.pre.tcl"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PLACE_DESIGN.TCL.POST}=$(SCRIPTS_DIR)/place_design.post.tcl"
+
+# impl POST_PLACE_POWER_OPT_DESIGN
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POST_PLACE_POWER_OPT_DESIGN.IS_ENABLED}={false}"
+
+# impl PHYS_OPT_DESIGN
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PHYS_OPT_DESIGN.IS_ENABLED}={false}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE}={AggressiveExplore}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.PHYS_OPT_DESIGN.TCL.POST}=$(SCRIPTS_DIR)/phys_opt_design.post.tcl"
+
+# impl ROUTE_DESIGN
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE}={AggressiveExplore}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS}={-verbose}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.ROUTE_DESIGN.TCL.PRE}=$(SCRIPTS_DIR)/route_design.pre.tcl"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.ROUTE_DESIGN.TCL.POST}=$(SCRIPTS_DIR)/route_design.post.tcl"
+# prevent phase "Leaf Clock Prog Delay Opt"
+LDCLFLAGS += --xp "vivado_param:route.optimizeLeafClkProgDlys=false"
+
+# impl POST_ROUTE_PHYS_OPT
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED}={true}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE}={AggressiveExplore}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.MORE OPTIONS}={-verbose}"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.PRE}=$(SCRIPTS_DIR)/post_route_phys_opt_design.pre.tcl"
+LDCLFLAGS += --xp "vivado_prop:run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.TCL.POST}=$(SCRIPTS_DIR)/post_route_phys_opt_design.post.tcl"
+
+# allow bitstream to be built even if there are timing violations
+# this also allows final step TCL.POST script to run
+LDCLFLAGS += --xp "param:compiler.skipTimingCheckAndFrequencyScaling=1"
+
+LDCLFLAGS += --kernel_frequency 125
+
+############################################################################
+# AWS/SDAccel configuration
+############################################################################
+
+# Points to Utility Directory
+COMMON_REPO        = $(AWS_FPGA_REPO_DIR)/SDAccel/examples/xilinx
+ABS_COMMON_REPO    = $(shell readlink -f $(COMMON_REPO))
+
+ROOT_DIR           = $(realpath ../../../..)
+MODSQR_DIR         = $(ROOT_DIR)/modular_square
+SCRIPTS_DIR        = $(realpath ../tcl)
+HOST_SRC_DIR       = $(ROOT_DIR)/msu/sw
+
+HOST_SRCS         += $(HOST_SRC_DIR)/MSUSDAccel.cpp
+HOST_SRCS         += $(HOST_SRC_DIR)/MSU.cpp
+HOST_SRCS         += $(HOST_SRC_DIR)/main.cpp
+
+CXXFLAGS          += -I$(HOST_SRC_DIR) -DFPGA=1 \
+	             -DMODULUS=\"$(MODULUS)\" \
+                     -DMOD_LEN=$(MOD_LEN)
+ifeq ($(SIMPLE_SQ), 1)
+CXXFLAGS          += -DSIMPLE_SQ=1
+endif
+
+TARGETS           := hw
+TARGET            := $(TARGETS)
+DEVICE            := $(AWS_PLATFORM)
+XCLBIN            := ./xclbin
+
+include ../utils.mk
+
+DSA               := $(call device2sandsa, $(DEVICE))
+BUILD_DIR         := ./vdf/_x.$(TARGET).$(DSA)
+
+CXX               := $(XILINX_SDX)/bin/xcpp
+XOCC              := $(XILINX_SDX)/bin/xocc
+VIVADO            := vivado
+
+# Include Libraries
+include $(ABS_COMMON_REPO)/libs/opencl/opencl.mk
+include $(ABS_COMMON_REPO)/libs/xcl2/xcl2.mk
+CXXFLAGS          += $(xcl2_CXXFLAGS)
+LDFLAGS           += $(xcl2_LDFLAGS)
+HOST_SRCS         += $(xcl2_SRCS)
+
+CXXFLAGS          += $(opencl_CXXFLAGS) -Wall -O0 -std=c++14
+LDFLAGS           += $(opencl_LDFLAGS) -lgmp
+
+# include other Xilinx stuff
+CXXFLAGS          += -I/opt/xilinx/xrt/include
+
+# Host compiler global settings
+CXXFLAGS          += -fmessage-length=0
+LDFLAGS           += -lrt -lstdc++ 
+
+# Kernel compiler global settings
+CLFLAGS           += -t $(TARGET) --platform $(DEVICE) 
+CLFLAGS           += --save-temps --temp_dir $(BUILD_DIR) 
+
+# Enable waveform tracing
+TRACE              = 1
+CLFLAGS           += -g
+
+# Gather files to copy to an FPGA enabled server
+F1_FILE            = to_f1.tar.gz
+
+# Host side executable name
+EXECUTABLE         = host
+
+EMCONFIG_DIR       = $(XCLBIN)/$(DSA)
+
+BINARY_CONTAINER     = $(XCLBIN)/vdf.$(TARGET).$(DSA).xclbin
+BINARY_CONTAINER_XO  = $(XCLBIN)/vdf.$(TARGET).$(DSA).xo
+BINARY_CONTAINER_AWS = vdf.$(TARGET).$(DSA).awsxclbin
+
+CP = cp -rf
+
+S3_BUCKET          = ggg-vdf-fpga
+
+
+############################################################################
+# Rules
+############################################################################
+
+.PHONY: all clean cleanall docs emconfig
+all: check-devices $(EXECUTABLE) $(BINARY_CONTAINER) emconfig
+
+.PHONY: exe
+exe: $(EXECUTABLE)
+
+# Gather source files needed to run the sdx GUI
+sdx:
+	mkdir -p                          sdx/src
+	cp $(HOST_SRCS)                   sdx/src
+	cp $(xcl2_HDRS)                   sdx/src
+	cp $(XCLBIN)/vdf.hw_emu.$(DSA).xo sdx/src
+	cp $(HOST_SRC_DIR)/*.cpp          sdx/src
+	cp $(HOST_SRC_DIR)/*.hpp          sdx/src
+
+# Gather files needed to run on the FPGA
+.PHONY: to_f1
+to_f1: $(F1_FILE)
+
+$(F1_FILE): $(EXECUTABLE) $(BINARY_CONTAINER_AWS)
+	tar czvf $@ $^
+
+# Register the new bitstream
+# This only works on an AWS host
+$(BINARY_CONTAINER_AWS): $(BINARY_CONTAINER)
+	cd $(XCLBIN)
+	$(SDACCEL_DIR)/tools/create_sdaccel_afi.sh \
+	   -xclbin=$(BINARY_CONTAINER) \
+           -o=vdf.hw.xilinx_aws-vu9p-f1-04261818_dynamic_5_0 \
+	   -s3_bucket=$(S3_BUCKET) -s3_dcp_key=dcp -s3_logs_key=logs
+	cat *afi_id.txt
+
+
+$(BINARY_CONTAINER_XO): msuconfig.vh
+
+sdaccel.ini:
+ifeq ($(TRACE), 1)
+	echo "[Emulation]" > sdaccel.ini
+	echo "launch_waveform=batch" >> sdaccel.ini
+	echo "[Debug]" >> sdaccel.ini
+	echo "profile=true" >> sdaccel.ini
+	echo "timeline_trace=true" >> sdaccel.ini
+	echo "device_profile=true" >> sdaccel.ini
+
+$(BINARY_CONTAINER_XO): sdaccel.ini
+else
+	rm -f sdaccel.ini
+endif
+
+xo: $(XCLBIN)/vdf.$(TARGET).$(DSA).xo
+
+$(XCLBIN)/vdf.$(TARGET).$(DSA).xo:
+	mkdir -p ${XCLBIN}
+	$(VIVADO) -mode batch -source $(SCRIPTS_DIR)/gen_xo.tcl \
+                  -tclargs $@ vdf hw $(DEVICE)
+
+
+# Building kernel
+$(XCLBIN)/vdf.$(TARGET).$(DSA).xclbin: $(BINARY_CONTAINER_XO)
+	mkdir -p $(XCLBIN)
+	$(XOCC) $(CLFLAGS) $(LDCLFLAGS) \
+             -lo $(XCLBIN)/vdf.$(TARGET).$(DSA).xclbin \
+             $(XCLBIN)/vdf.$(TARGET).$(DSA).xo
+
+# Building Host
+$(EXECUTABLE): $(HOST_SRCS) $(HOST_HDRS)
+	mkdir -p $(XCLBIN)
+	$(CXX) $(CXXFLAGS) $(HOST_SRCS) $(HOST_HDRS) -o '$@' $(LDFLAGS)
+
+emconfig:$(EMCONFIG_DIR)/emconfig.json
+$(EMCONFIG_DIR)/emconfig.json:
+	emconfigutil --platform $(DEVICE) --od $(EMCONFIG_DIR)
+
+check: all
+ifeq ($(TARGET),$(filter $(TARGET),sw_emu hw_emu))
+	$(CP) $(EMCONFIG_DIR)/emconfig.json .
+	XCL_EMULATION_MODE=$(TARGET) ./$(EXECUTABLE) $(HOST_FLAGS_HW_EMU)
+else
+	 ./$(EXECUTABLE) $(HOST_FLAGS_FPGA)
+endif
+
+ifneq ($(TARGET),$(findstring $(TARGET), hw hw_emu))
+$(warning WARNING:Application supports only hw hw_emu TARGET. \
+  Please use the target for running the application)
+endif
+
+
+# Cleaning stuff
+clean:
+	-$(RMDIR) $(EXECUTABLE) $(XCLBIN)/{*sw_emu*,*hw_emu*} 
+	-$(RMDIR) sdaccel_* TempConfig system_estimate.xtxt *.rpt
+	-$(RMDIR) src/*.ll _xocc_* .Xil emconfig.json 
+	-$(RMDIR) dltmp* xmltmp* *.log *.jou *.wcfg *.wdb
+	-$(RMDIR) mem
+
+cleanall: clean
+	-$(RMDIR) $(XCLBIN)
+	-$(RMDIR) _x.*
+	-$(RMDIR) ./tmp_kernel_pack* ./packaged_kernel* 
+	-$(RMDIR) mem

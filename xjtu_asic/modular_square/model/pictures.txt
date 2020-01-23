@@ -1,0 +1,99 @@
+################################################################################
+# Copyright 2019 xjtu
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
+
+################################################################################
+# Squaring is devided into two parts: high part and low part.
+################################################################################
+# squared polynomial (V*V) of 130 elements
+#   |-----------------------------------------------------------------------|
+#   |                                  V*V                                  |
+#   |-----------------------------------------------------------------------|
+#
+#   |-----------------------------------------------------------------------|
+#   |           high part             |           low part                  |
+#   |-----------------------------------------------------------------------|
+# 
+# Using the 'high part', we can get 198 numbers (each is 1024 bits) 
+# for reduction. Adding up all the numbers, we'll get the required answer.
+
+################################################################################
+# Cycle 0: calculating high part of the squaring
+################################################################################
+# input polynomial (V) of 65 elements
+#
+#        |---|----------------------------------|
+#        | R |                 V                |
+#        |---|----------------------------------|
+#
+# R is the redundant extra elements that carry over from previous operations in
+# order to lessen the burden of handling carries.
+#
+#  1089 parallel multipliers are used.
+#
+
+
+
+
+#############################################################################
+# Cycle 1 calculating low part of the squaring 
+#############################################################################
+# Calculating low part of the squaring.
+# Generating reduction numbers and adding these numbers togther.
+#
+# |---------------------|  
+# |    DSP array        |  
+# |---------------------|  
+#           |
+#          \ /
+# |---|---------------------|  
+# |R  |         low part    |                          
+# |---|---------------------|  
+#  R is the extra part.                           
+#
+#                               |----------------------------|
+# |---------------------|       |                            |
+# |         high part   |  -->  |                            |
+# |---------------------|       |       Lookup Tables        |
+#                               |                            |
+#                               |----------------------------|
+#                                              |
+#                                             \ /
+#                                    |-----------------------|
+#                                    |       rn_sum          |
+#                                    |-----------------------|
+#
+#
+# |---|     |----------------------------|
+# | R | --> |       Lookup Tables        |
+# |---|     |----------------------------|
+#                         |
+#                        \ /
+#                |-----------------------|
+#                |  9   reduction numbers|
+#                |-----------------------|
+#                |-----------------------|
+#                |      low part         |
+#                |-----------------------|
+#                |-----------------------|
+#                |      rn_sum           |
+#                |-----------------------|
+#           +
+#     ----------------------------------------------------------------------
+#            |---------------------------|
+#            |      sq_out               |
+#            |---------------------------|              
+#

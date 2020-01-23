@@ -1,0 +1,5 @@
+VDF FPGA Competition Submission Form
+
+Team name: Geriatric Guys with Gates
+Expected result (avg ns/square): 26.4ns
+Design documentation (below): see README.md file
